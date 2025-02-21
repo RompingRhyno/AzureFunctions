@@ -1,0 +1,76 @@
+@page "/school"
+
+@inject HttpClient httpClient
+
+<h3>Schools and Student Counts</h3>
+
+@if (schoolCounts == null)
+{
+    <p>Loading schools...</p>
+}
+else
+{
+    @foreach (var schoolCount in schoolCounts)
+    {
+        <button @onclick="async () => { if (schoolCount.School != null) await LoadStudents(schoolCount.School); }">
+            @schoolCount.School (@schoolCount.Count students)
+        </button>
+    }
+}
+
+@if (students != null && selectedSchool != null)
+{
+    <h4>Students in @selectedSchool</h4>
+    <ul>
+        @foreach (var student in students)
+        {
+            <li>@student.FirstName @student.LastName</li>
+        }
+    </ul>
+}
+
+@code {
+    private List<SchoolCount>? schoolCounts;
+    private List<Student>? students;
+    private string? selectedSchool;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            schoolCounts = await httpClient.GetFromJsonAsync<List<SchoolCount>>($"{Constants.BASE_URL}api/students/count-by-school");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error loading schools: {ex.Message}");
+        }
+    }
+
+    private async Task LoadStudents(string school)
+    {
+        selectedSchool = school;
+        try
+        {
+            students = await httpClient.GetFromJsonAsync<List<Student>>($"{Constants.BASE_URL}api/school/{school}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error loading students for {school}: {ex.Message}");
+            students = null; // Clear list on error
+        }
+    }
+
+    private class SchoolCount
+    {
+        public string? School { get; set; }
+        public int Count { get; set; }
+    }
+
+    private class Student
+    {
+        public int StudentId { get; set; }
+        public string? LastName { get; set; }
+        public string? FirstName { get; set; }
+        public string? School { get; set; }
+    }
+}
