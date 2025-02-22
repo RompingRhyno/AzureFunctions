@@ -1,76 +1,67 @@
-@page "/school"
-
+@page "/schools"
 @inject HttpClient httpClient
+@inject NavigationManager Navigation
 
-<h3>Schools and Student Counts</h3>
+<h3 class="mt-4 mb-3">Schools</h3>
 
 @if (schoolCounts == null)
 {
-    <p>Loading schools...</p>
+    <div class="alert alert-info">Loading schools...</div>
+}
+else if (!schoolCounts.Any())
+{
+    <div class="alert alert-warning">No schools found.</div>
 }
 else
 {
-    @foreach (var schoolCount in schoolCounts)
-    {
-        <button @onclick="async () => { if (schoolCount.School != null) await LoadStudents(schoolCount.School); }">
-            @schoolCount.School (@schoolCount.Count students)
-        </button>
-    }
-}
-
-@if (students != null && selectedSchool != null)
-{
-    <h4>Students in @selectedSchool</h4>
-    <ul>
-        @foreach (var student in students)
-        {
-            <li>@student.FirstName @student.LastName</li>
-        }
-    </ul>
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>School Name</th>
+                    <th>Student Count</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var schoolCount in schoolCounts)
+                {
+                    <tr>
+                        <td>@schoolCount.School</td>
+                        <td>@schoolCount.Count</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm"
+                                @onclick="@(() => Navigation.NavigateTo($"/school/{Uri.EscapeDataString(schoolCount.School)}"))">
+                                View Students
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 
 @code {
     private List<SchoolCount>? schoolCounts;
-    private List<Student>? students;
-    private string? selectedSchool;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            schoolCounts = await httpClient.GetFromJsonAsync<List<SchoolCount>>($"{Constants.BASE_URL}api/students/count-by-school");
+            schoolCounts = await
+            httpClient.GetFromJsonAsync<List<SchoolCount>>($"{Constants.BASE_URL}api/students/count-by-school");
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error loading schools: {ex.Message}");
-        }
-    }
-
-    private async Task LoadStudents(string school)
-    {
-        selectedSchool = school;
-        try
-        {
-            students = await httpClient.GetFromJsonAsync<List<Student>>($"{Constants.BASE_URL}api/school/{school}");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Error loading students for {school}: {ex.Message}");
-            students = null; // Clear list on error
+            schoolCounts = new List<SchoolCount>(); // Prevent null reference issues
         }
     }
 
     private class SchoolCount
     {
-        public string? School { get; set; }
+        public string School { get; set; } = string.Empty;
         public int Count { get; set; }
-    }
-
-    private class Student
-    {
-        public int StudentId { get; set; }
-        public string? LastName { get; set; }
-        public string? FirstName { get; set; }
-        public string? School { get; set; }
     }
 }
